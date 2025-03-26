@@ -16,7 +16,7 @@ public class GameController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        GameTimer -= Time.deltaTime; //시간을 매 프레임마다 감소 시킨다. (deltaTime 프레임간의 시간 간격을 의미한다.)
+        GameTimer -= Time.deltaTime; //시간을 매 프레임마다 감소 시킨다. (deltaTime 프레임간의 시간 간격을 의미한다.)  
 
         if (GameTimer <=0) //만약 Timer의 수치가 0이하로 내려갈 경우
         {
