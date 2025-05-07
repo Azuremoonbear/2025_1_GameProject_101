@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class DragDrop : MonoBehaviour
@@ -45,11 +46,70 @@ public class DragDrop : MonoBehaviour
         isDragging = false;
         GetComponent<SpriteRenderer>().sortingOrder = 1; //드래그 중인 카드가 다른 카드보다 앞에 보이도록 한다
 
-        RetrunToOriginalPosition();
-    }
+        if(gameManager == null)
+        {
+            RetrunToOriginalPosition();
+            return;
+        }
 
-    //원래 위치로 돌아가는 함수
-    void RetrunToOriginalPosition()
+        bool wasInMergeArea = startParent == gameManager.mergeArea;
+
+        if(IsOverArea(gameManager.handArea))
+        {
+            Debug.Log("손패 영역으로 이동");
+
+            if(wasInMergeArea)
+            {
+                for(int i = 0; i < gameManager.mergeCount; i++)
+                {
+                    if (gameManager.mergeCards[i] == gameObject)
+                    {
+                        for(int j = i; j < gameManager.mergeCount -1; j++)
+                        {
+                            gameManager.mergeCards[j] = gameManager.mergeCards[j + 1];
+                        }
+                        gameManager.mergeCards[gameManager.mergeCount - 1] = null;  //맨 뒤의 카드를 null로 설정
+                        gameManager.mergeCount--;                                   //카드 수를 줄인다
+
+                        transform.SetParent(gameManager.handArea); //손패 카드 추가
+                        gameManager.handCards[gameManager.handCount] = gameObject;
+                        gameManager.handCount++;
+
+                        gameManager.ArrangeHand(); //영역 정렬
+                        gameManager.ArrangeMerge();
+                        break;
+                    }
+                }
+            }
+            else if(IsOverArea(gameManager.mergeArea))              //머지 영역 위에 카드를 놓았는지 확인
+            {
+                if(gameManager.mergeCount >= gameManager.maxMergeSize)
+                {
+                    Debug.Log("머지 영역이 가득 찼습니다.");
+                    RetrunToOriginalPosition();
+                }
+                else
+                {
+                    gameManager.MoveCardToMerge(gameObject);
+                }
+            }
+            else
+            {
+                RetrunToOriginalPosition();   //아무 영역도 아니면 원래로 돌아가기
+            }
+
+            if(wasInMergeArea)
+            {
+                if(gameManager.mergeButton != null)
+                {
+                    bool canMerge = (gameManager.mergeCount == 2 || gameManager.mergeCount == 3);
+                    gameManager.mergeButton.interactable = canMerge;
+                }
+            }
+        }
+    }
+    
+    void RetrunToOriginalPosition()         //원래 위치로 돌아가는 함수
     {
         transform.position = startPosition;
         transform.SetParent(startParent);
@@ -59,6 +119,10 @@ public class DragDrop : MonoBehaviour
             if(startParent == gameManager.handArea)
             {
                 gameManager.ArrangeHand();
+            }
+            if (startParent == gameManager.mergeArea)
+            {
+                gameManager.ArrangeMerge();
             }
         }
     }
@@ -70,12 +134,21 @@ public class DragDrop : MonoBehaviour
             return false;
         }
 
-        //영역의 콜라이더를 가져옴
-        Collider2D areaCollider = area.GetComponent<Collider2D>();
-        if (areaCollider == null)
-            return false;
+        Vector3 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mousePosition.z = 0;
 
-        //카드가 영역 안에 있는지 확인
-        return areaCollider.bounds.Contains(transform.position);
+        RaycastHit2D[] hits = Physics2D.RaycastAll(mousePosition, Vector2.zero);
+
+        foreach(RaycastHit2D hit in hits)
+        {
+            if(hit.collider != null && hit.collider.transform == area)
+            {
+                Debug.Log(area.name + "영역 감지됨");
+                return true;
+            }
+        }
+
+        return false;
+
     }
 }
